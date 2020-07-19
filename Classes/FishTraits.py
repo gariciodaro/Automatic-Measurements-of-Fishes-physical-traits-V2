@@ -62,6 +62,19 @@ class FishTraits(object):
         self.tail_traits(dim_to_calculate="CPd")
         self.tail_traits(dim_to_calculate="CFd")
 
+        # In case CPd did not have a proper edge
+        # modify the trait to half CFd. Simitric.
+        try:
+            front_tail_row=self.CPd_pp[0]
+            rear_tail_row=self.CFd_pp[0]
+            if front_tail_row==rear_tail_row:
+                self.CPd_pp[0]=\
+                    self.CFd_pp[0]+int((self.CFd_pp[2]-self.CFd_pp[0])/4)
+                self.CPd_pp[2]=\
+                    self.CPd_pp[2]-int((self.CFd_pp[2]-self.CFd_pp[0])/4)
+        except:
+            pass
+
         self.TL()
         self.eye_traits(dim_to_calculate="Hd")
         self.eye_traits(dim_to_calculate="Eh")
@@ -76,6 +89,14 @@ class FishTraits(object):
         self.fin_traits(dim_to_calculate="PFi")
         self.fin_traits(dim_to_calculate="PFb")
         self.fin_traits(dim_to_calculate="PFl")
+
+        # if PFb_pp exist, it should correspont
+        # to the max vertical lenght Bd
+        if self.PFb_pp:
+            self.Bd_pp=self.PFb_pp
+        else:
+            self.Bd()
+
         traits={"CPd":self.CPd_pp,
                 "CFd":self.CFd_pp,
                 "TL":self.TL_pp,
@@ -86,7 +107,8 @@ class FishTraits(object):
                 "PFl":self.PFl_pp,
                 "Hd":self.Hd_pp,
                 "Eh":self.Eh_pp,
-                "Ed":self.Ed_pp}
+                "Ed":self.Ed_pp,
+                "Bd":self.Bd_pp}
         self.traits_coordinates=traits
 
         if self.mode_ratio=="in_name_TL":
@@ -112,33 +134,59 @@ class FishTraits(object):
         Parameters
         ----------
         dim_to_calculate : str
-            can be CPd (caudal peduncle minimal depth) or 
-            CFd(caudal fin depth)
+            -CPd caudal peduncle minimal depth
+            -CFd caudal fin depth
         """
         try:
             
             Tai_box=self.yolo_boxes.get("Tai")
             bc=self.from_box_to_r_c(Tai_box)
+            center_tail_row=int((bc[1]-bc[0])/2)+bc[0]
+            center_tail_col=int((bc[3]-bc[2])/2)+bc[2]
+            #ref_pixel=self.closed_contour[center_tail_row,center_tail_col]
+
             #extra only the tail, while
             #preserving dimensions.
             get_tail_img=np.zeros(self.closed_contour.shape,np.uint8)
             get_tail_img[bc[0]:bc[1],bc[2]:bc[3]]=\
                                 self.closed_contour[bc[0]:bc[1],bc[2]:bc[3]]
+            #plt.imshow(get_tail_img), plt.axis("on")
+            #plt.show()
             #ref_pixel=stats.mode(self.closed_contour[bc[0]:bc[1],bc[2]:bc[3]], 
             #                    axis=None)
             #get most frequent value of binary pixel whithin the tail box
             #ref_pixel=np.ravel(ref_pixel)[0]
+            #print("ref_pixel",ref_pixel)
+            
 
             if(dim_to_calculate=="CPd"):
-                col_pos=bc[2]
-                rear_col_pos=bc[2]
-                row_values=get_tail_img[:,bc[2]]
-                index_per_row_no_zero=[index for 
-                                index,row in enumerate(row_values) if row!=0]
-                row_pos=index_per_row_no_zero[0]
-                rear_row_pos=index_per_row_no_zero[-1]
-                self.CPd_pp=[row_pos,col_pos,rear_row_pos,rear_col_pos] 
+                try:
+                    col_pos=bc[2]
+                    rear_col_pos=bc[2]
+                    row_values=get_tail_img[:,bc[2]]
+                    index_row_up=[index for 
+                                    index,row in enumerate(row_values) if row==1 and 
+                                    index<=center_tail_row]
+                    #print("index_row_up",index_row_up)
+                    index_row_up.reverse()
+                    find_index_upper_edge=self.simple_edge_detector(index_row_up)
+                    
 
+                    index_row_down=[index for 
+                                    index,row in enumerate(row_values) if row==1 and 
+                                    index>center_tail_row]
+                    #print("index_row_down",index_row_down)
+                    find_index_down_edge=self.simple_edge_detector(index_row_down)
+                    #print("edges",find_index_upper_edge,find_index_down_edge)
+                    row_pos      = index_row_up[find_index_upper_edge]
+                    rear_row_pos = index_row_down[find_index_down_edge]
+                    self.CPd_pp=[row_pos,col_pos,rear_row_pos,rear_col_pos]
+                except:
+                    col_pos=bc[2]
+                    rear_col_pos=bc[2]
+                    row_pos=bc[0]
+                    rear_row_pos=bc[1]
+                    self.CPd_pp=[row_pos,col_pos,rear_row_pos,rear_col_pos]
             if(dim_to_calculate=="CFd"):
                 col_pos=bc[3]
                 rear_col_pos=bc[3]
@@ -196,6 +244,22 @@ class FishTraits(object):
                 self.Mo_pp=None
         except:
             self.Mo_pp=None
+    def Bd(self):
+        """Calculates Bd. body depth.
+        """
+        #H,W=self.closed_contour.shape()
+
+        max_sum_col=self.closed_contour.sum(axis=0).argmax()
+        print('maximum col:',max_sum_col)
+        list_row=[index for 
+            index,row in enumerate(
+                        self.closed_contour[:,max_sum_col])
+                         if row==1]
+        row_pos=list_row[0]
+        col_pos=max_sum_col
+        rear_row_pos=list_row[-1]
+        rear_col_pos=max_sum_col
+        self.Bd_pp=[row_pos,col_pos,rear_row_pos,rear_col_pos]
 
     def Bl(self):
         """Calculates Bl.body standard length.
@@ -226,20 +290,32 @@ class FishTraits(object):
         try:
             Fin_box=self.yolo_boxes.get("Fin")
             trans_fin_coor=self.from_box_to_r_c(Fin_box)
+
+            #center_fin_row=int((trans_fin_coor[1]-trans_fin_coor[0])/2)+trans_fin_coor[0]
+            #center_fin_col=int((trans_fin_coor[3]-trans_fin_coor[2])/2)+trans_fin_coor[2]
+
             col_fin=trans_fin_coor[2]
-            x,y=self.closed_contour.shape[0],self.closed_contour.shape[1]
-            ref_pixel=self.closed_contour[x//2,y//2]
+            #x,y=self.closed_contour.shape[0],self.closed_contour.shape[1]
+            #ref_pixel=self.closed_contour[x//2,y//2]
+            #ref_pixel=self.closed_contour[center_fin_row,center_fin_col]
             row_list_1=[index for index,each_row in 
                     enumerate(self.closed_contour[:,col_fin])
-                                             if each_row!=abs(ref_pixel-255) and
-                                             index<=trans_fin_coor[0]]
-            row_list_1.reverse()
-            A=row_list_1[self.simple_edge_detector(row_list_1)]
+                                                if each_row==1 and
+                                                index<=trans_fin_coor[0]]
+
+            # In case the top row of yolo box
+            # falls outside the body, use that
+            # coordinate as edged.
+            if len(row_list_1)!=0:
+                row_list_1.reverse()
+                A=row_list_1[self.simple_edge_detector(row_list_1)]
+            else:
+                A=trans_fin_coor[0]
 
             row_list_A=[index for index,each_row in 
                     enumerate(self.closed_contour[:,col_fin])
-                                             if each_row!=abs(ref_pixel-255) and
-                                             index>=A]
+                                                if each_row==1 and
+                                                index>=A]
             B=row_list_A[self.simple_edge_detector(row_list_A)]
 
             #print("A,B",A,B)
@@ -329,20 +405,24 @@ class FishTraits(object):
             # invert the black and white colors.
             
             #ref_pixel=stats.mode(self.closed_contour,axis=None)[0][0]
-            x,y=self.closed_contour.shape[0],self.closed_contour.shape[1]
-            ref_pixel=self.closed_contour[x//2,y//2]
+            #x,y=self.closed_contour.shape[0],self.closed_contour.shape[1]
+            #ref_pixel=self.closed_contour[x//2,y//2]
+            ref_pixel=self.closed_contour[center_eye_row,center_eye_col]
             #print("ref_pixel",ref_pixel)
 
             if(dim_to_calculate=="Hd"):
                 row_list=[index for index,each_row in 
                         enumerate(self.closed_contour[:,center_eye_col]) if 
-                                                each_row!=abs(ref_pixel-255) and
+                                                each_row!=abs(ref_pixel-1) and
                                                 index<=center_eye_row]
-                row_list.reverse()
                 #print("row_list",row_list)
+                row_list.reverse()
+                #print("row_list.reverse",row_list)
                 row_edge=self.simple_edge_detector(row_list)
                 #print("row_edge",row_edge)
+                
                 row_pos=row_list[row_edge]
+                #print("row_pos",row_pos)
                 rear_row_pos=center_eye_row
                 self.Hd_pp=[row_pos,
                             col_pos,

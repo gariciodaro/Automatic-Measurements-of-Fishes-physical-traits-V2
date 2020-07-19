@@ -1,16 +1,21 @@
 
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Jun 29 2019
 
+@author: gari.ciodaro.guerra
+"""
 
 import os
 import sys
 import matplotlib.pyplot as plt
-from skimage.color import rgb2gray
-from skimage.segmentation import active_contour
+#from skimage.color import rgb2gray
+#from skimage.segmentation import active_contour
 # Absolute path of .current script
 script_pos = os.path.dirname(os.path.abspath(__file__))
 if not script_pos in sys.path:
     sys.path.append(script_pos)
-from skimage.filters import gaussian
+#from skimage.filters import gaussian
 import numpy as np
 import time
 import cv2
@@ -25,32 +30,37 @@ from Classes.AuxiliarNameReference import AuxiliarNameReference
 from Classes.SingleBoxAdjustment import SingleBoxAdjustment
 from Classes.FishTraits import FishTraits
 from Classes.TraitsDrawer import TraitsDrawer
+import preProcess
 
 import argparse
 
 import warnings
 warnings.filterwarnings('ignore')
-options = {"pbLoad":"/media/gari/extra_ssd/folders/Jacobs_resourses/AMT_V2/built_graph/yolov2-custum-fish.pb",
-            "metaLoad": "/media/gari/extra_ssd/folders/Jacobs_resourses/AMT_V2/built_graph/yolov2-custum-fish.meta",
+options = {"pbLoad":"/home/gari/Desktop/myGItRepos/AMT_V2/Automatic-Measurements-of-Fishes-physical-traits-V2/built_graph/yolov2-custum-fish.pb",
+            "metaLoad": "/home/gari/Desktop/myGItRepos/AMT_V2/Automatic-Measurements-of-Fishes-physical-traits-V2/built_graph/yolov2-custum-fish.meta",
             "gpu": 0.0,
             "threshold": 0.2 }
 tfnet = TFNet(options)
 plt.rcParams['image.cmap'] = 'gray'
 
 
-
-
-
-
 if __name__ == '__main__':
+    
     parser = argparse.ArgumentParser()
-    parser.add_argument("--path_pictures", help="path to pictures. return CNN feature detection")
-    parser.add_argument("--mode_ratio", help="in_name_TL, reference_tape")
-    parser.add_argument("--path_template", help="if mode_ratio=reference_tape, pass the path to the template")
-    parser.add_argument("--length", help="if mode_ratio=reference_tape, pass physical distante of tape")
-    parser.add_argument("--show_detection", help="return CNN feature detection")
-    parser.add_argument("--show_end_result", help="return image with dimension drawing")
+    parser.add_argument("--path_pictures", 
+                        help="path to pictures. return CNN feature detection")
+    parser.add_argument("--mode_ratio", 
+                        help="in_name_TL, reference_tape")
+    parser.add_argument("--path_template", 
+        help="if mode_ratio=reference_tape, pass the path to the template")
+    parser.add_argument("--length", 
+        help="if mode_ratio=reference_tape, pass physical distante of tape")
+    parser.add_argument("--show_detection", 
+        help="return CNN feature detection")
+    parser.add_argument("--show_end_result", 
+        help="return image with dimension drawing")
     parser.add_argument("--debug", help="show inline prints")
+    parser.add_argument("--contrast", help="select number between 1.0 and 3.0")
 
     args = parser.parse_args()
 
@@ -84,13 +94,15 @@ if __name__ == '__main__':
     path=args.path_pictures
     images=[file for file in os.listdir(path) if 
             (file.endswith(".jpg") or file.endswith(".png") or 
-                file.endswith(".JPG"))]
-
+                file.endswith(".JPG") or file.endswith(".PNG") )]
+    
+    results_dict={}
     for each_file in images:
         # Read image
-        print(path+each_file)
-        image_1=path+each_file
+        print(os.path.join(path,each_file))
+        image_1=os.path.join(path,each_file)
         imgcv_p = cv2.imread(image_1)
+        imgcv_p = preProcess.main(imgcv_p,each_file,False)
 
         imgcv,rr = ImagesOperations.image_resize(imgcv_p, height = 360)
 
@@ -118,9 +130,10 @@ if __name__ == '__main__':
 
         boolean_Mou, closed_contour=ImagesOperations.get_mask_roi(imgcv,
                                                             use_body,
-                                                            dict_boxes)
-        #plt.imshow(closed_contour), plt.axis("on")
-        #plt.show()
+                                                            dict_boxes,
+                                                            float(args.contrast))
+        plt.imshow(closed_contour), plt.axis("on")
+        plt.show()
         fish_object=FishTraits(closed_contour=closed_contour, 
                                 yolo_boxes=dict_boxes,
                                 boolean_Mou=boolean_Mou,
@@ -136,14 +149,11 @@ if __name__ == '__main__':
         t_drawer.draw_measurements()
 
         final=t_drawer.image
-
-        df_m=pd.DataFrame.from_dict(fish_object.traits_distances,
-                                    orient='index',
-                                    columns=["Measurement"]).T
-        print(df_m)
-        df_m
+        results_dict[each_file]=fish_object.traits_distances
 
         copy_image=final.copy()
+        print(os.path.join(path,'target',each_file))
+        cv2.imwrite(os.path.join(path,'target',each_file), final)
 
         RGB_img=copy_image
         if show_end_result:
@@ -153,4 +163,6 @@ if __name__ == '__main__':
             plt.imshow(RGB_img), plt.axis("on")
             plt.show()
         print("*"*100)
+    results_to_disk=pd.DataFrame(results_dict).T
+    results_to_disk.to_csv(os.path.join(path,'results.csv'))
 

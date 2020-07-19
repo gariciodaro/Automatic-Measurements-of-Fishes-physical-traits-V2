@@ -35,7 +35,7 @@ class ImagesOperations():
         return resized,r
 
     @staticmethod
-    def get_mask_roi(imgcv,use_body,dict_boxes):
+    def get_mask_roi(imgcv,use_body,dict_boxes,contrast):
         """get binary image of the region of interest roi. This process 
         determines how exact a measurement of the fish triat can be.
         """
@@ -75,7 +75,7 @@ class ImagesOperations():
             roi=imgcv[coor_1:coor_2,coor_3:coor_4]
         else:
             roi=imgcv
-        alpha = 1.5 # Contrast control (1.0-3.0)
+        alpha = contrast # Contrast control (1.0-3.0)
         beta = 0 # Brightness control (0-100)
         #convertScaleAbs:
         #Scales, calculates absolute values, and converts the result to 8-bit.
@@ -98,7 +98,7 @@ class ImagesOperations():
                             cv2.THRESH_OTSU)[1]
         #check if you need the invert the image.
         get_corner_kernel=np.mean(thresh[0:10,0:10])
-        if get_corner_kernel>10:
+        if get_corner_kernel>50:
             thresh=255-thresh
 
         # We need to ensure that the image is completely closed. 
@@ -114,7 +114,7 @@ class ImagesOperations():
         cnts = cv2.findContours(close,cv2.RETR_EXTERNAL,
                             cv2.CHAIN_APPROX_SIMPLE)
         cnts = cnts[0] if len(cnts) == 2 else cnts[1]
-        cv2.fillPoly(close, cnts, [255,255,255])
+        cv2.fillPoly(close, cnts, 1)
 
         if boolean_roi:
             blank_image[coor_1:coor_2,coor_3:coor_4]=close
