@@ -57,6 +57,7 @@ def main(path,path_save_image):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--path", help="path to process")
+    parser.add_argument("--path_save_image", help="path to save")
     #parser.add_argument("--show_plot", help="show_plot. plot")
     args = parser.parse_args()
-    main(args.path)
+    main(args.path,args.path_save_image)

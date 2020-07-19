@@ -15,11 +15,20 @@ There are two modes of operation.
 + Specify that there is reference tape in the picture.
 
 The fish should be placed Horizontally with the mouth pointing to the left.
-Use the script ```preProcess.py``` to perform rotations and flipping. 
+Use the script ```manualPreProcessing.py``` to perform rotations and flipping:
+
+```
+Execute on terminal. It shows the image, and it waits
+for user input:
+    -v : Vertical axis flip
+    -h : Horizontal axis flip
+    -c : clockwise rotation
+    -cc: counter clockwise rotation. 
+```
 
 You could also put on the name of the file el keyword '.R.' so that vertical
-flipping occurs. Additionally if your image has a bigger Height than With, the script
-will rotate counter-clockwise and perform the flipping by '.R.'.
+flipping occurs. If your image has height bigger than width. 
+the script will rotate counter-clockwise and perform the flipping by if name has '.R.'
 
 The general parameters:
 
