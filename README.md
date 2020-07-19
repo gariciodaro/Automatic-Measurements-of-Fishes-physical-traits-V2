@@ -35,7 +35,7 @@ parser.add_argument("--contrast", help="select number between 1.0 and 3.0")
 ```
 ## Installation
 - clone the repository
-- crete two folders, bin and build_graph. Place yolov2.weights in "build_graph" replace bin. Download them here [here](https://drive.google.com/drive/folders/1pQPy27n-dhk3vybnUfKYfaJhle3zZbMY)
+- Create two folders, bin and build_graph. Place yolov2.weights in "build_graph" replace bin. Download them here [here](https://drive.google.com/drive/folders/1pQPy27n-dhk3vybnUfKYfaJhle3zZbMY)
 - conda create -n AMT_v2 python=3.6
 - conda install -c anaconda tensorflow-gpu==1.15
 - conda install -c conda-forge opencv==4.2.0
