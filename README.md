@@ -7,7 +7,7 @@
 --------------------------------------------------------------
 
 
-Create a Python software to automatically measure fish's traits giving a photo.
+Create a Python software to automatically measure fish's traits given a photo.
 
 There are two modes of operation. 
 
