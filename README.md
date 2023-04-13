@@ -1,9 +1,6 @@
 # Automatic Measurements of Fishes physical traits V2.
 
-<center>
-<img src="http://garisplace.com/img/sample_fish.jpg" />
-</center>
-
+![](sample_fish.PNG)
 --------------------------------------------------------------
 
 
@@ -58,12 +55,6 @@ on  ```fish_training``` you can find the images and annotation used to train the
 yolo. Visit ```sample_images``` to check some images and .csv results. 
 
 Relies on darkflow. Inference is configured to be done with CPU. (Python 3.6). To setup (Tested on ubunto 16):
-
-## Scheme of procedure.
-<img src="http://garisplace.com/img/amt_2_diagram.png" />
-
-## All desired traits.
-<img src="http://garisplace.com/img/fish_traits.png" />
 
 --------------------------------------------------------------
 
